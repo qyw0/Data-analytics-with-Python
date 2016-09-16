@@ -1,0 +1,194 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Sep  8 14:31:34 2016
+
+@author: qinya wang
+GWID: G37220174
+
+The first two functions - getData() and getData_new() - create two dataframe for q1234 and q56 respectively.
+"""
+
+import pandas as pd
+import time
+
+# creat dataframe
+def getData():
+    """
+    Reads multiple files and returns contents in a pandas dataframe.
+    Args:
+        None:
+    Requests for the name of the path for the files in the program
+    Returns:
+        a list with the file contents
+    """
+    dfAll=pd.DataFrame({'Name' : [],'Sex' : [],'Count' : [],'Year' : []})
+    print ('Started ...')
+    start_time = time.time()
+    for year in range(1880,2016):
+        filename = 'yob'+str(year)+'.txt'
+        filepath = 'names/'+filename
+        # Read a new file into a dataframe
+        df = pd.read_csv(filepath, header=None)
+        df.columns = ['Name', 'Sex', 'Count']
+        df['Year'] = str(year)
+        dfAll = pd.concat([dfAll,df])      
+    print('Done...')
+    print ('It took', round(time.time()-start_time,4), 'seconds to read all the data into a dataframe--dfAll.')
+    return (dfAll)
+
+#assign argument 
+myDF = getData()
+
+'''   
+In 'dfAll', lots of names do not show up in every year. And in this condition 'Count' has no value.
+However each name should has a 'Count' in each year in order to plot the COMPLETE trend and to calculate the variance
+So for the years the name did not show, the 'Count' should still EXIST and be '0'.
+'''
+def getData_new(myDF):
+    '''
+    Create a new data frame that fill '0' in place where certain names has no value in certain years
+    Args:
+        dataframe 'dfAll' with all data
+    Returns:
+        a dataframe with complete data
+    '''
+    print("started...")
+    start_time = time.time()
+    dsYearCounts = myDF.groupby(['Year', 'Name']).sum()['Count']
+    data = {}
+    for year in range(1880, 2016):
+        data[str(year)] = dsYearCounts[str(year)]
+    dfNew = pd.DataFrame(data).fillna(0.).transpose()
+    print("Done, time used: {0}".format(round(time.time()-start_time,4)), "seconds to creat a new dataframe to be used in Q5&Q6.")
+    return (dfNew)
+
+#assign argument    
+dfNew = getData_new(myDF)   
+
+def q1(myDF):
+    """ 
+    Compute total number of births for each year and provide a formatted printout of that
+    Args:
+        dataframe 'dfAll' with all data
+    Returns:
+        Nothing
+    """
+    dfCount = myDF['Count'].groupby(myDF['Year']).sum()
+    s = '{:>5}'.format('Year')
+    s = s + '{:>10}'.format('Births')
+    print(s)
+    for myIndex, myValue in dfCount.iteritems():
+        s = '{:>5}'.format(myIndex)
+        s = s + '{:>10}'.format(str(int(myValue)))
+        print (s)
+        
+def q2(myDF):
+    '''
+    Compute the total births each year (from 1990 to 2014, inclusive of both) for males and females and provide a plot of that
+    Args: 
+        dataframe 'dfAll' with all data
+    Returns:
+        Nothing
+    '''
+    dfsub = myDF[ (myDF['Year'] >= '1990') & (myDF['Year'] <= '2014') ]
+    # Subset by year and sex and sum the variable of interest
+    dfCountBySex = dfsub.groupby(['Year', 'Sex']).sum()['Count']
+    #create a newd dataframe which is simple to plot
+    d = {}
+    for year in range(1990, 2015):
+        d[str(year)] = dfCountBySex[str(year)]
+    mf = pd.DataFrame(d).transpose()
+    mf.plot.bar(figsize=(20,7))
+ 
+def q3(myDF):
+    '''
+    Print the top 5 names for each year starting in 1950
+    Args: 
+        dataframe 'dfAll' with all data
+    Returns:
+        Nothing
+    '''
+    s = ''
+    s = '{:>5}'.format('Year')
+    s = s + '{:>10}'.format('Name 1')
+    s = s + '{:>10}'.format('Name 2')
+    s = s + '{:>10}'.format('Name 3')
+    s = s + '{:>10}'.format('Name 4')
+    s = s + '{:>10}'.format('Name 5')
+    # Print header
+    print (s)
+    for i in range(1950,1954):
+        fn = myDF[(myDF['Year'] == str(i))]                   # Create a data frame for a matching year
+        fn = fn.sort_values('Count', ascending=False).head(5)   # Sort by count and retain the top five rows
+        s = ''
+        s = s = s + '{:>5}'.format(str(i))
+        # Now iterate through the data frame with five records
+        for idx, row in fn.iterrows():
+            s = s + '{:>10}'.format(row["Name"])
+        print(s)
+   
+def q4(myDF):
+    '''
+    Find the top 3 female and top 3 male names for years 2010 and up and and plot the frequency by gender
+    Args: 
+        dataframe 'dfAll' with all data
+    Returns:
+        Nothing    
+    '''
+    dfMale = myDF[(myDF['Year'] >= '2010') & (myDF['Sex'] == 'M')]
+    dfm = dfMale[['Name','Count']].head(3) # Subset by name and sum count, pick the top 3
+    m = dfm.groupby('Name').sum().sort_values('Count',ascending=False) #Make 'Name' the index
+    m.plot.bar(title = 'Top 3 male Names(2010~2015)', color = 'skyblue')
+    print(m)
+    dfFemale = myDF[(myDF['Year'] >= '2010') & (myDF['Sex'] == 'F')]
+    dff = dfFemale[['Name','Count']].head(3)
+    f = dff.groupby('Name').sum().sort_values('Count',ascending=False)
+    f.plot.bar(title = 'Top 3 female names(2010~2015)', color = 'pink')
+    print(f)  
+
+def q5(dfNew):
+    '''
+    Plot the trend of the names 'John', 'Harry', 'Mary' and 'Marilyn' over all of the years of the data set
+    Args: 
+        dataframe 'dfNew' with all data
+    Returns:
+        Nothing     
+    '''
+    #Stack 4 plots one over the other
+    john = dfNew[['John']]
+    john.plot(figsize=(12,4))
+    harry = dfNew[['Harry']]
+    harry.plot(figsize=(12,4))
+    mary = dfNew[['Mary']]
+    mary.plot(figsize=(12,4))
+    marilyn = dfNew[['Marilyn']]
+    marilyn.plot(figsize=(12,4))
+    #Plot all four trends in one plot
+    fourNames = dfNew[['John','Harry','Mary','Marilyn']]
+    fourNames.plot(figsize=(15,6))
+    
+def q6(dfNew):
+    '''
+    Find the ten names that have shown the greatest variation over the years and plot this.
+    Args: 
+        dataframe 'dfNew' with all data
+    Returns:
+        Nothing      
+    '''
+    dfVar = dfNew.var().sort_values(ascending=False).head(10) #calculate variance for each name and pick top 10
+    s = ''
+    s = '{:>5}'.format('Names')
+    s = s + '{:>20}'.format('Variance')
+    print(s) # Print header
+    print(dfVar)
+    dfVar.plot.bar()
+ 
+#try functions below   
+'''
+q1(myDF)
+q2(myDF)
+q3(myDF)
+q4(myDF)
+q5(dfNew)
+q6(dfNew)
+'''
